@@ -39,7 +39,7 @@ function mkdir_if_not_exists() {
 #The dir that will contain kernel work for the future
 created=$(mkdir_if_not_exists "../kernel") 
 if [[ $created == "true" ]]; then #This is the first run, copy to working dir
-    cp ./helper.sh ../kernel
+    cp ./kernel_tool.sh ../kernel
 fi
 cd ../kernel
 
