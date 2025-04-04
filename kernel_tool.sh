@@ -53,16 +53,19 @@ if [[ $# != 0 && "$kernel_name" != *"$1" ]]; then #A version was given and is di
     wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$1.tar.xz
     tar xf *.tar.xz
     rm *.tar.xz
-    kernel_name=$(ls | grep -i linux)
+    kernel_name=$(ls -d */ | grep -i linux)
 fi
 
 #Get kernel name, cd and open menuconfig or nconfig 
 echo "Cleaning previous build and opening config"
 cd $kernel_name/
 make clean > /dev/null
+
+#I like nconfig and its simplicity. Replace with menuconfig if preferred
 make nconfig #menuconfig
 
-#Prompt to build, we'll prompt later to install
+#Prompt to build, we'll prompt later to install. Skip option allows for installing an
+#already built kernel
 echo "Kernel name will be ${kernel_name}-cust"
 read -p "Build this kernel version for dpkg install? (Y/n/(s)kip) " build_resp
 case $build_resp in
@@ -97,7 +100,7 @@ case $build_resp in
         #Skip option, pass to the install portion
         ;;
     
-    #No or else, drop out
+    #No or else -> drop out
     [Nn]* )
         echo "Exiting, kernel will not be built"
         exit
