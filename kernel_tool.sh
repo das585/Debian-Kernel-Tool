@@ -49,6 +49,7 @@ created=$(mkdir_if_not_exists "old")
 #Grab the given version of the kernel from the web, if that isn't in the working dir
 kernel_name=$(ls -d */ | grep -i linux)
 if [[ $# != 0 && "$kernel_name" != *"$1" ]]; then #A version was given and is different then the working dir version
+    
     echo "Downloading and unpacking kernel version $1"
     wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$1.tar.xz
     tar xf *.tar.xz
@@ -56,21 +57,21 @@ if [[ $# != 0 && "$kernel_name" != *"$1" ]]; then #A version was given and is di
     kernel_name=$(ls -d */ | grep -i linux)
 fi
 
-#Get kernel name, cd and open menuconfig or nconfig 
-echo "Cleaning previous build and opening config"
-cd $kernel_name/
-make clean > /dev/null
 
-#I like nconfig and its simplicity. Replace with menuconfig if preferred
-make nconfig #menuconfig
-
-#Prompt to build, we'll prompt later to install. Skip option allows for installing an
-#already built kernel
+#Prompt to build, a second prompt will install. Skip passes to that next prompt
 echo "Kernel name will be ${kernel_name}-cust"
 read -p "Build this kernel version for dpkg install? (Y/n/(s)kip) " build_resp
 case $build_resp in
     #Yes, build the kernel
-    [Yy]* ) 
+    [Yy]* )
+        #Get kernel name, cd and open menuconfig or nconfig 
+        echo "Cleaning previous build and opening config"
+        cd $kernel_name/
+        make clean &> /dev/null
+        
+        #I like nconfig and its simplicity. Replace with menuconfig if preferred
+        make nconfig #menuconfig
+        
         #Disabling settings that may impact the build
         scripts/config --disable SYSTEM_TRUSTED_KEYS
         scripts/config --disable SYSTEM_REVOCATION_KEYS
@@ -113,8 +114,10 @@ case $build_resp in
 esac
 
 #Check that build completed and output the needed files
-ls *.deb &> /dev/null
-if [[ $(echo $?) != "0" ]]; then
+if [[ $(pwd) != *kernel ]]; then
+    cd ..
+fi
+if [[ $(ls | grep -i deb) == "" ]]; then
     echo "Build failed, exiting"
     exit
 fi
@@ -123,17 +126,16 @@ fi
 read -p "Install new kernel: $kernel_name -cust? (Y/n)? " inst_resp
 case $inst_resp in
     [Yy]* )
-        cd ..
         sudo dpkg -i linux-image-*_amd64.deb
         sudo dpkg -i linux-headers-*_amd64.deb
         ;;
     [Nn]* )
-        echo "Exiting kernel tool. The kernel can be manually installed by running the following:"
+        echo "Exiting kernel tool. Manually install the kernel by running the following:"
         echo "sudo dpkg -i linux-image-*_amd64.deb && sudo dpkg -i linux-headers-*_amd64.deb"
         exit
         ;;
     * )
-        echo "Invalid response, exiting without installing. The kernel can be installed manually by running the following:"
+        echo "Invalid response, exiting without installing. Manually install the kernel by running the following:"
         echo "sudo dpkg -i linux-image-*_amd64.deb && sudo dpkg -i linux-headers-*_amd64.deb"
         exit
         ;;
@@ -141,6 +143,7 @@ esac
 
 if [[ $(echo $?) != 0 ]]; then
     echo "The install was unsuccessful. Please review the errors and retry the installation."
+    exit
 fi
 
 echo "Process complete, please restart to boot into the new kernel."
